@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <title>Cool API for comic books</title>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <h1>Cool API for comic books</h1>
+  <h2>MAKE SURE THAT THE SPELLING IS THE EXACT SAME WHEN QUERYING INDIVIDUAL MODELS, 
+    COPY AND PASTE NAME FROM LIST INTO URL, NO WHITESPACE AT THE END OR DIFFERENT CAPITALIZATION</h2>
+  <h2>Characters</h2>
+  <p>
+  {% for time in times %}
+    {{ time }}<br>
+  {% endfor %}
+  <br>To get entire character list make request to https://super-phase2-api.appspot.com/characters
+  <br>To request specific character make request to https://super-phase2-api.appspot.com/character/CHARACTER_NAME
+  <br> with CHARACTER_NAME set to any character from the above list
+  <br> eg: https://super-phase2-api.appspot.com/character/DeadPool
+  </p>
+
+  <h2>Issues</h2>
+  <p>
+  {% for issue in issues %}
+    {{ issue }}<br>
+  {% endfor %}
+  <br>To get entire Issue list make request to https://super-phase2-api.appspot.com/issues
+  <br>To request specific character make request to https://super-phase2-api.appspot.com/issue/ISSUE_NAME
+  <br> with ISSUE_NAME set to any character from the above list
+  <br> eg: https://super-phase2-api.appspot.com/issue/The Reign of the Queen
+  </p>
+
+  <h2>Authors</h2>
+  <p>
+  {% for author in authors %}
+    {{ author }}<br>
+  {% endfor %}
+  <br>To get entire Author list make request to https://super-phase2-api.appspot.com/authors
+  <br>To request specific character make request to https://super-phase2-api.appspot.com/author/AUTHOR_NAME
+  <br> with ISSUE_NAME set to any character from the above list
+  <br> eg: https://super-phase2-api.appspot.com/author/Stan Lee
+
+  </p>
+
+
+
+</body>
+</html>

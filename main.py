@@ -1,0 +1,195 @@
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START gae_python37_render_template]
+import datetime
+import json
+import os
+
+from flask import Flask, render_template, redirect, url_for, make_response
+
+app = Flask(__name__)
+
+
+@app.route('/')
+def root():
+    characters = []
+    for jsonFile  in  os.listdir('Characters'):
+        characters.append(jsonFile.split('.')[0])
+    issues = []
+    for jsonFile  in  os.listdir('Issues'):
+        issues.append(jsonFile.split('.')[0])
+    creators = []
+    for jsonFile  in  os.listdir('Creators'):
+        creators.append(jsonFile.split('.')[0])
+
+    
+
+
+
+    # For the sake of example, use static information to inflate the template.
+    # This will be replaced with real information in later steps.
+
+    return render_template(
+        'index.html', times=characters, issues = issues, authors = creators)
+
+
+@app.route('/characters')
+def characters():
+    return charsPaged(1)
+    #return requestRespond('Characters/')
+        
+@app.route('/issues')
+def issues():
+    return issuesPaged(1)
+    #return requestRespond('Issues/')
+
+
+@app.route('/authors')
+def authors():
+    return authorsPaged(1)
+
+
+@app.route('/characters/<int:pageNum>')
+def charsPaged(pageNum):
+    return pagedRequestRespond(directory= 'Characters/',pageNum=pageNum)
+
+@app.route('/authors/<int:pageNum>')
+def authorsPaged(pageNum):
+    return pagedRequestRespond(directory= 'Creators/',pageNum=pageNum)
+
+@app.route('/issues/<int:pageNum>')
+def issuesPaged(pageNum):
+    return pagedRequestRespond(directory= 'Issues/',pageNum=pageNum)
+
+
+
+
+
+
+@app.route('/character/<string:charName>')
+def character(charName):
+    resp = {'response' : 'Character Not Found',
+            'results': 'null'}
+
+    for jsonFile  in  os.listdir('Characters'):
+        name = jsonFile.split('.')[0]
+        if charName == name:
+            charFile = open('Characters/' + jsonFile)
+            resp['results'] = json.load(charFile)
+            resp['response'] = 'Success'
+            return json.dumps(resp, indent=4, sort_keys= True)
+        
+    return json.dumps(resp, indent=4, sort_keys= True)
+
+
+@app.route('/issue/<string:issueName>')
+def issue(issueName):
+    resp = {'response' : 'Issue Not Found',
+            'results': 'null'}
+
+    for jsonFile  in  os.listdir('Issues'):
+        name = jsonFile.split('.')[0]
+        if issueName == name:
+            charFile = open('Issues/' + jsonFile)
+            resp['results'] = json.load(charFile)
+            resp['response'] = 'Success'
+            return json.dumps(resp, indent=4, sort_keys= True)
+        
+    return json.dumps(resp, indent=4, sort_keys= True)
+
+
+
+@app.route('/author/<string:authorName>')
+def author(authorName):
+    resp = {'response' : 'Author Not Found',
+            'results': 'null'}
+
+    for jsonFile  in  os.listdir('Creators'):
+        name = jsonFile.split('.')[0]
+        if authorName == name:
+            charFile = open('Creators/' + jsonFile)
+            resp['results'] = json.load(charFile)
+            resp['response'] = 'Success'
+            return json.dumps(resp, indent=4, sort_keys= True)
+        
+    return json.dumps(resp, indent=4, sort_keys= True)
+
+
+
+
+def pagedRequestRespond(directory, pageNum):
+    info = pageBounds(pageNum,directory)
+    resp = {'response' : 'Success',
+            'page_num' : pageNum,
+            'results': ''}
+    if info == None:
+        resp['response'] = 'Invalid Page Request'
+        return resp
+    
+    filesInDir, bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2], info[3]
+    
+    array = []
+    for jsonFile  in  filesInDir[bottomIndex:topIndex]:
+        importantFile = open(directory + jsonFile)
+        array.append( (json.load(importantFile))  )
+    
+    resp['results'] = array
+    resp = make_response(json.dumps(resp, indent=4, sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+
+def requestRespond(directory):
+    resp = {'response' : 'Success',
+            'results': ''}
+    array = []
+    for jsonFile  in  os.listdir(directory):
+        importantFile = open(directory + jsonFile)
+        array.append( (json.load(importantFile))  )
+    
+    resp['results'] = array
+
+    resp = make_response(json.dumps(resp, indent=4))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+def pageBounds(pageNum, directory):
+    pageNum -= 1
+    filesInDir = sorted(os.listdir(directory))
+    numFiles = len(filesInDir)
+    numPages = int(numFiles/5) +1
+    filesPerPage = int(numFiles/numPages)
+    if pageNum <0 or pageNum >numPages:
+        return None
+        
+    bottomIndex = pageNum * filesPerPage
+    topIndex = (pageNum+1) * filesPerPage
+    return(filesInDir, bottomIndex,topIndex,numPages+1)
+    
+    
+
+
+if __name__ == '__main__':
+    # This is used when running locally only. When deploying to Google App
+    # Engine, a webserver process such as Gunicorn will serve the app. This
+    # can be configured by adding an `entrypoint` to app.yaml.
+    # Flask's development server will automatically serve static files in
+    # the "static" directory. See:
+    # http://flask.pocoo.org/docs/1.0/quickstart/#static-files. Once deployed,
+    # App Engine itself will serve those files as configured in app.yaml.
+    app.run(host='127.0.0.1', port=8080, debug=True)
+# [START gae_python37_render_template]

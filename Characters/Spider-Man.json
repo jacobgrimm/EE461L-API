@@ -1,0 +1,29 @@
+{
+    "aliases": "Peter Parker\nCaptain Universe\nDusk\nHornet\nProdigy\nRicochet\nBombastic Bag-Man\nPoison\nPestilence\nSpidey\nWallcrawler\nWebslinger\nWeb-Head\nYour Friendly Neighborhood Spider-Man\nSpider-Kid",
+    "alignment": "good",
+    "api_detail_url": "https://comicvine.gamespot.com/api/character/4005-1443/",
+    "appearance": {
+        "eye-color": "Hazel",
+        "gender": "Male",
+        "hair-color": "Brown",
+        "height": [
+            "5'10",
+            "178 cm"
+        ],
+        "race": "Human",
+        "weight": [
+            "165 lb",
+            "74 kg"
+        ]
+    },
+    "creators": [
+        "Stan Lee",
+        "Steve Ditko"
+    ],
+    "deck": "Peter Parker was bitten by a radioactive spider as a teenager, granting him spider-like powers. After the death of his Uncle Ben, which he could have prevented, Peter learned that \"with great power, comes great responsibility.\" Swearing to always protect the innocent from harm, Peter Parker became the Amazing Spider-Man!",
+    "description": "Current EventsThe Spider-Verse event is over and Spider-Man returns home to move on with his life. Initially, Peter wanted to construct a special prison to rehabilitate superhuman criminals, but such plans are interrupted when corporate criminal Ghost attacks Parker Industries. Spider-Man defeats the Ghost but Parker Industries burns to the ground.OriginBirth of Spider-ManPeter Benjamin Parker was born to C.I.A. agents Richard and Mary Parker, who were killed when Peter was very young. After the death of his parents, Peter was raised by his Uncle Ben and Aunt May in a modest house in Forest Hills, New York. While still in High School, Peter attended a science exhibition about radiology where he was bitten by a radioactive spider, granting him the proportionate strength and agility of a spider as well as a \" Spider-Sense\" that warns him of nearby danger. In order to test his new abilities \u2013 and earn some cash, Peter participated in a wrestling challenge against Crusher Hogan. He easily ",
+    "first_appeared_in_issue": "Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us",
+    "image": "https://www.superherodb.com/pictures2/portraits/10/100/133.jpg",
+    "name": "Spider-Man",
+    "real_name": "Peter Benjamin Parker"
+}
