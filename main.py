@@ -65,68 +65,30 @@ def authors():
 def charsPaged(pageNum):
     return pagedRequestRespond(directory= 'Characters/',pageNum=pageNum)
 
+
 @app.route('/authors/<int:pageNum>')
 def authorsPaged(pageNum):
     return pagedRequestRespond(directory= 'Creators/',pageNum=pageNum)
+
 
 @app.route('/issues/<int:pageNum>')
 def issuesPaged(pageNum):
     return pagedRequestRespond(directory= 'Issues/',pageNum=pageNum)
 
 
-
-
-
-
 @app.route('/character/<string:charName>')
 def character(charName):
-    resp = {'response' : 'Character Not Found',
-            'results': 'null'}
-
-    for jsonFile  in  os.listdir('Characters'):
-        name = jsonFile.split('.')[0]
-        if charName == name:
-            charFile = open('Characters/' + jsonFile)
-            resp['results'] = json.load(charFile)
-            resp['response'] = 'Success'
-            return json.dumps(resp, indent=4, sort_keys= True)
-        
-    return json.dumps(resp, indent=4, sort_keys= True)
+    return individualRequestRespond('Characters/',charName)
 
 
 @app.route('/issue/<string:issueName>')
 def issue(issueName):
-    resp = {'response' : 'Issue Not Found',
-            'results': 'null'}
-
-    for jsonFile  in  os.listdir('Issues'):
-        name = jsonFile.split('.')[0]
-        if issueName == name:
-            charFile = open('Issues/' + jsonFile)
-            resp['results'] = json.load(charFile)
-            resp['response'] = 'Success'
-            return json.dumps(resp, indent=4, sort_keys= True)
-        
-    return json.dumps(resp, indent=4, sort_keys= True)
-
+    return individualRequestRespond('Issues/',issueName)
 
 
 @app.route('/author/<string:authorName>')
 def author(authorName):
-    resp = {'response' : 'Author Not Found',
-            'results': 'null'}
-
-    for jsonFile  in  os.listdir('Creators'):
-        name = jsonFile.split('.')[0]
-        if authorName == name:
-            charFile = open('Creators/' + jsonFile)
-            resp['results'] = json.load(charFile)
-            resp['response'] = 'Success'
-            return json.dumps(resp, indent=4, sort_keys= True)
-        
-    return json.dumps(resp, indent=4, sort_keys= True)
-
-
+    return individualRequestRespond('Creators/',authorName)
 
 
 def pagedRequestRespond(directory, pageNum):
@@ -147,24 +109,32 @@ def pagedRequestRespond(directory, pageNum):
     
     resp['results'] = array
     resp = make_response(json.dumps(resp, indent=4, sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
 
 
 
-def requestRespond(directory):
-    resp = {'response' : 'Success',
-            'results': ''}
-    array = []
-    for jsonFile  in  os.listdir(directory):
-        importantFile = open(directory + jsonFile)
-        array.append( (json.load(importantFile))  )
+def individualRequestRespond(directory, desiredResource):
+    resp = {'response' : 'Resource {} Not Found'.format(desiredResource),
+            'results': 'Please Verify desired resource is present in our database and spelled correctly'}
+
     
-    resp['results'] = array
+    for jsonFile  in  os.listdir(directory):
+        name = jsonFile.split('.')[0]
+        if desiredResource == name:
+            resourceFile = open(directory + jsonFile)
+            resp['results'] = json.load(resourceFile)
+            resp['response'] = 'Success'
+            resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            return resp
 
-    resp = make_response(json.dumps(resp, indent=4))
+        
+    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
+
+
+
 
 
 def pageBounds(pageNum, directory):
