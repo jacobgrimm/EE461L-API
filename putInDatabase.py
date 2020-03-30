@@ -36,7 +36,8 @@ def start():
                     issueDict['name'], issueDict['series'],issueDict['cover_date'],issueDict['description'],issueDict['image'],'"person_credits": ' + json.dumps(issueDict['person_credits']),
                     '"character_credits": ' +json.dumps(issueDict['character_credits']))
                 conn.execute(query)
-                
+    
+    directories = ['Characters/'] 
     for directory in directories:
         with db.connect() as conn:
             for jsonFile  in  os.listdir(directory):
@@ -46,8 +47,9 @@ def start():
                     charDict['name'],charDict['real_name'],charDict['aliases'],charDict['alignment'],'"appearance:":' + json.dumps(charDict['appearance']),'"creators":'+ json.dumps(charDict['creators']),
                     charDict['deck'],charDict['discription'],charDict['first_appeared_in_issue'],charDict['image']))
                 conn.execute(query)
-                
-     for directory in directories:
+     
+    directories = ['Authors/']
+    for directory in directories:
         with db.connect() as conn:
             for jsonFile  in  os.listdir(directory):
                 importantFile = open(directory + jsonFile)
