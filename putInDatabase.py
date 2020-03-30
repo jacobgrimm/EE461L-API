@@ -23,8 +23,6 @@ def start():
     )
     )
 
-
-
     directories = ['Issues/']
 
     for directory in directories:
@@ -58,8 +56,8 @@ def start():
             for jsonFile  in  os.listdir(directory):
                 importantFile = open(directory + jsonFile)
                 authorDict = json.load(importantFile)
-                query = "INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values('{}','{}','{}','{}','{}','{{ {} }}','{{ {} }}');".format(
+                query = "INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values('{}','{}','{}','{}','{}','{}','{}','{}','{}');".format(
                     authorDict['name'],authorDict['aliases'],authorDict['birth'],authorDict['country'],authorDict['death'],authorDict['deck'],authorDict['description'],authorDict['hometown']authorDict['image'])
                 conn.execute(query)
 
-                #INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values();             
+                #INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values();
