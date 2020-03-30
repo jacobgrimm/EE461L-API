@@ -16,10 +16,31 @@
 import datetime
 import json
 import os
+import sqlalchemy
 
 from flask import Flask, render_template, redirect, url_for, make_response
 
 app = Flask(__name__)
+
+
+cloud_sql_connection_name = 'icdb-sql:us-central1:mysql-test'
+db_user = 'root'
+db_pass = 'icdbmysql'
+db_name = 'icdb'
+db = sqlalchemy.create_engine(
+# Equivalent URL:
+# mysql+pymysql://<db_user>:<db_pass>@/<db_name>?unix_socket=/cloudsql/<cloud_sql_instance_name>
+sqlalchemy.engine.url.URL(
+    drivername="mysql+pymysql",
+    username=db_user,
+    password=db_pass,
+    database=db_name,
+
+    query={"unix_socket": "/cloudsql/{}".format(cloud_sql_connection_name)},
+)
+,echo = True
+)
+
 
 
 @app.route('/')
@@ -47,6 +68,9 @@ def root():
 
 @app.route('/characters')
 def characters():
+    
+    
+    
     return charsPaged(1)
     #return requestRespond('Characters/')
         
@@ -89,6 +113,26 @@ def issue(issueName):
 @app.route('/author/<string:authorName>')
 def author(authorName):
     return individualRequestRespond('Creators/',authorName)
+
+
+@app.route('/test')
+def test():
+    with db.connect() as conn:
+        resultproxy = conn.execute('show tables;')
+        d, a = {}, []
+        for rowproxy in resultproxy:
+            # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+            for column, value in rowproxy.items():
+                # build up the dictionary
+                d = {**d, **{column: value}}
+            a.append(d)
+        
+        return json.dumps(a)
+
+
+
+
+
 
 
 def pagedRequestRespond(directory, pageNum):
