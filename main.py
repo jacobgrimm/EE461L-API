@@ -62,12 +62,13 @@ def root():
     return render_template(
         'index.html', times=characters, issues = issues, authors = creators)
 
-
+'''
 @app.route('/init')
 def init():
     from putInDatabase import start
     start()
-
+    return "sucess!"
+'''
 
 
 @app.route('/characters')
