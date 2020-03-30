@@ -37,9 +37,6 @@ def start():
                     '"character_credits": ' +json.dumps(issueDict['character_credits']))
                 conn.execute(query)
 
-
-
-
     directories = ['Characters/']
 
     for directory in directories:
@@ -48,13 +45,11 @@ def start():
                 importantFile = open(directory + jsonFile)
                 characterDict = json.load(importantFile)
                 query = "INSERT INTO Characters(HeroName, RealName, Aliases, Alignment, Appearance, Creators, Deck, Description, FirstAppearance, ImageURL) values('{}','{}','{}','{}','{{{}}}','{{{}}}','{}','{}','{}','{}');".format(
-                    characterDict['name'], characterDict['real_name'],characterDict['alignment'],'"appearance": ' + json.dumps(characterDict['appearance']),
+                    characterDict['name'],characterDict['real_name'],characterDict['aliases'],characterDict['alignment'],'"appearance": ' + json.dumps(characterDict['appearance']),
                     '"creators": ' +json.dumps(characterDict['creators']),characterDict['deck'],characterDict['description'],characterDict['first_appeared_in_issue'],characterDict['image'])
                 conn.execute(query)
 
                 #INSERT INTO Characters(HeroName, RealName, Aliases, Alignment, Appearance, Creators, Deck, Description, FirstAppearance, ImageURL) values();
-
-
 
     directories = ['Creators/']
 
@@ -64,10 +59,7 @@ def start():
                 importantFile = open(directory + jsonFile)
                 authorDict = json.load(importantFile)
                 query = "INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values('{}','{}','{}','{}','{}','{{ {} }}','{{ {} }}');".format(
-                    authorDict['name'],authorDict['aliases'],authorDict['birth'],authorDict['country'],authorDict['death'],authorDict['deck'],authorDict['description'],,authorDict['hometown']authorDict['image'])
+                    authorDict['name'],authorDict['aliases'],authorDict['birth'],authorDict['country'],authorDict['death'],authorDict['deck'],authorDict['description'],authorDict['hometown']authorDict['image'])
                 conn.execute(query)
 
-                #INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values();
-
-
-                
+                #INSERT INTO Authors(Name, Aliases, Birth, Country, Death, Deck, Description, Hometown, ImageURL) values();             
