@@ -12,6 +12,7 @@
 # below:
 .git
 .gitignore
+clean_json.py
 
 # Python pycache:
 __pycache__/

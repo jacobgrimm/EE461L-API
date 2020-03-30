@@ -20,8 +20,6 @@ import sqlalchemy
 
 from flask import Flask, render_template, redirect, url_for, make_response
 
-from putInDatabase import start
-
 app = Flask(__name__)
 
 
@@ -43,8 +41,6 @@ sqlalchemy.engine.url.URL(
 )
 
 
-start()
-
 @app.route('/')
 def root():
     characters = []
@@ -60,7 +56,6 @@ def root():
     
 
 
-
     # For the sake of example, use static information to inflate the template.
     # This will be replaced with real information in later steps.
 
@@ -68,8 +63,17 @@ def root():
         'index.html', times=characters, issues = issues, authors = creators)
 
 
+@app.route('/init')
+def init():
+    from putInDatabase import start
+    start()
+
+
+
 @app.route('/characters')
 def characters():
+    return pagedRequestRespond('Characters/',1)
+
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Characters")
 
@@ -88,8 +92,67 @@ def characters():
     return charsPaged(1)
     #return requestRespond('Characters/')
         
+
+
+
+@app.route('/characters_new')
+def characters1():
+
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Characters")
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
+
+
+@app.route('/issues_new')
+def issues2():
+
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues")
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
+
+@app.route('/authors_new')
+def authors3():
+
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors")
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
+
+
+
+
+
+
 @app.route('/issues')
 def issues():
+    return pagedRequestRespond('Issues/',1)
+
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Issues")
 
@@ -108,6 +171,8 @@ def issues():
 
 @app.route('/authors')
 def authors():
+    return pagedRequestRespond('Creators/',1)
+
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Authors")
 
@@ -150,6 +215,7 @@ def issuesPaged(pageNum):
 
 @app.route('/character/<string:charName>')
 def character(charName):
+    return individualRequestRespond('Characters/',charName)
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
 
@@ -166,6 +232,8 @@ def character(charName):
 
 @app.route('/issue/<string:issueName>')
 def issue(issueName):
+    return individualRequestRespond('Issues/',issueName)
+
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
 
@@ -183,6 +251,8 @@ def issue(issueName):
 
 @app.route('/author/<string:authorName>')
 def author(authorName):
+    return individualRequestRespond('Creators/',authorName)
+
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
 
