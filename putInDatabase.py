@@ -33,6 +33,6 @@ def start():
                 importantFile = open(directory + jsonFile)
                 issueDict = json.load(importantFile)
                 query = "INSERT INTO Issues(Title, Series, ReleaseDate, Description, ImageURL, Authors, Characters) values('{}','{}','{}','{}','{}','{{ {} }}','{{ {} }}');".format(
-                    issueDict['name'], issueDict['series'],issueDict['cover_date'],issueDict['description'],issueDict['image'],json.dumps(issueDict['person_credits']),
-                    json.dumps(issueDict['character_credits']))
+                    issueDict['name'], issueDict['series'],issueDict['cover_date'],issueDict['description'],issueDict['image'],'"person_credits": ' + json.dumps(issueDict['person_credits']),
+                    '"character_credits": ' +json.dumps(issueDict['character_credits']))
                 conn.execute(query)

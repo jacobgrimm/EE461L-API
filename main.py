@@ -49,13 +49,13 @@ start()
 def root():
     characters = []
     for jsonFile  in  os.listdir('Characters'):
-        characters.append(jsonFile.split('.')[0])
+        characters.append(jsonFile.split('.json')[0])
     issues = []
     for jsonFile  in  os.listdir('Issues'):
-        issues.append(jsonFile.split('.')[0])
+        issues.append(jsonFile.split('.json')[0])
     creators = []
     for jsonFile  in  os.listdir('Creators'):
-        creators.append(jsonFile.split('.')[0])
+        creators.append(jsonFile.split('.json')[0])
 
     
 
