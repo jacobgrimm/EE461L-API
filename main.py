@@ -98,6 +98,9 @@ def pagedRequestRespond(directory, pageNum):
             'results': ''}
     if info == None:
         resp['response'] = 'Invalid Page Request'
+        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+
         return resp
     
     filesInDir, bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2], info[3]
@@ -109,6 +112,7 @@ def pagedRequestRespond(directory, pageNum):
     
     resp['results'] = array
     resp = make_response(json.dumps(resp, indent=4, sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
 
 
