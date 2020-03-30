@@ -20,6 +20,8 @@ import sqlalchemy
 
 from flask import Flask, render_template, redirect, url_for, make_response
 
+from putInDatabase import start
+
 app = Flask(__name__)
 
 
@@ -38,10 +40,10 @@ sqlalchemy.engine.url.URL(
 
     query={"unix_socket": "/cloudsql/{}".format(cloud_sql_connection_name)},
 )
-,echo = True
 )
 
 
+start()
 
 @app.route('/')
 def root():
@@ -68,7 +70,19 @@ def root():
 
 @app.route('/characters')
 def characters():
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Characters")
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
     
+    return json.dumps(a)
+
     
     
     return charsPaged(1)
@@ -76,13 +90,47 @@ def characters():
         
 @app.route('/issues')
 def issues():
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues")
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
     return issuesPaged(1)
     #return requestRespond('Issues/')
 
 
 @app.route('/authors')
 def authors():
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors")
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
+
     return authorsPaged(1)
+
+
+
+
+
+
+
+
+
 
 
 @app.route('/characters/<int:pageNum>')
@@ -102,17 +150,51 @@ def issuesPaged(pageNum):
 
 @app.route('/character/<string:charName>')
 def character(charName):
-    return individualRequestRespond('Characters/',charName)
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
 
 
 @app.route('/issue/<string:issueName>')
 def issue(issueName):
-    return individualRequestRespond('Issues/',issueName)
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
+
 
 
 @app.route('/author/<string:authorName>')
 def author(authorName):
-    return individualRequestRespond('Creators/',authorName)
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    
+    return json.dumps(a)
 
 
 @app.route('/test')
