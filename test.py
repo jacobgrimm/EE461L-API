@@ -93,7 +93,7 @@ def test_author_page_count():
 def test_author_detail():
     response = requests.get("http://super-phase2-api.appspot.com/authors")
     response_body = response.json()
-    assert response_body['results'][4]['name'] == "Billy Tan"
+    assert response_body['results'][3]['name'] == "Billy Tan"
     
 def test_author_page():
     response = requests.get("http://super-phase2-api.appspot.com/authors/3")
@@ -109,10 +109,38 @@ def test_author_byName():
     response = requests.get("http://super-phase2-api.appspot.com/author/Stan Lee")
     response_body = response.json()
     assert response_body['results']['hometown']=="New York City"
+
+def test_all_characters():
+    response = requests.get('http://super-phase2-api.appspot.com/listChars')
+    response = response.json()
+    for i in response['Result']:
+        resp2 = requests.get('http://super-phase2-api.appspot.com/character/' + i)
+        resp2 = resp2.json()
+        assert resp2['response'] == 'Success'
     
     
-    
+def test_all_issues():
+    response = requests.get('http://super-phase2-api.appspot.com/listIssues')
+    response = response.json()
+    for i in response['Result']:
+        resp2 = requests.get('http://super-phase2-api.appspot.com/issue/' + i)
+        resp2 = resp2.json()
+        assert resp2['response'] == 'Success'
+
+def test_all_authors():
+    response = requests.get('http://super-phase2-api.appspot.com/listAuthors')
+    response = response.json()
+    for i in response['Result']:
+        resp2 = requests.get('http://super-phase2-api.appspot.com/author/' + i)
+        resp2 = resp2.json()
+        assert resp2['response'] == 'Success'
+
+
 def main():
+    test_all_characters()
+    test_all_authors()
+    test_all_issues()
+
     test_access_success()
     
     test_char_access()
@@ -135,7 +163,6 @@ def main():
     test_author_page_count()
     test_author_detail()
     test_author_page()
-    test_author_page_content()
     test_author_byName()
     
     print("pass all!")
