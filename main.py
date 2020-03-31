@@ -246,7 +246,33 @@ def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
 
-    
+def linkCharacter(HeroName):
+    conn = db.connect()
+    resultproxy2 = conn.execute("SELECT Title, Authors FROM Issues WHERE JSON_SEARCH(Characters, 'all', '{}') > 1;".format(HeroName))
+
+    titles =[]
+    authors =[]
+    for row in resultproxy2:
+        titles.append(row[0])
+        author = json.loads(row[1])
+        authors.extend(author['person_credits'])
+    authors = list(dict.fromkeys(authors))
+    result = (titles, authors)
+    return result
+
+def linkAuthor(Name):
+    conn = db.connect()
+    resultproxy2 = conn.execute("SELECT Title, Characters FROM Issues WHERE JSON_SEARCH(Authors, 'all', '{}%%') > 1;".format(Name))
+
+    titles =[]
+    characters =[]
+    for row in resultproxy2:
+        titles.append(row[0])
+        character = json.loads(row[1])
+        characters.extend(character['character_credits'])
+    characters = list(dict.fromkeys(characters))
+    result = (titles, characters)
+    return result
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
