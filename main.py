@@ -40,7 +40,6 @@ sqlalchemy.engine.url.URL(
 )
 )
 
-
 @app.route('/')
 def root():
     characters = []
@@ -70,133 +69,105 @@ def init():
     return "sucess!"
 '''
 
-
 @app.route('/characters')
 def characters():
-    return pagedRequestRespond('Characters/',1)
+    return pagedRequestRespond('Characters/',1)        
 
+@app.route('/character1/<string:charName>')
+def characterFind(charName):
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters")
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
-
-    
-    
-    return charsPaged(1)
-    #return requestRespond('Characters/')
-        
+    resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
+    return NEWindividualRequestRespond(resultproxy,charName,characterFormat)
 
 
+def characterFormat(SQLresponse):
+    SQLresponse['first_appeared_in_issue'] = SQLresponse['FirstAppearance'].replace('\"','"')
+    del(SQLresponse['FirstAppearance'])
+    SQLresponse['creators'] = SQLresponse['Creators'].replace('\"','"')
+    SQLresponse['creators'] = (json.loads(SQLresponse['creators']))['creators']
+    del SQLresponse['Creators']
+    SQLresponse['appearance'] = SQLresponse['Appearance'].replace('\"','"')
+    SQLresponse['appearance'] = (json.loads(SQLresponse['appearance']))['appearance']
+    del SQLresponse['Appearance']
+    SQLresponse['image'] = SQLresponse['ImageURL']
+    del(SQLresponse['ImageURL'])
+    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
+    lowered_resp['name']= lowered_resp['heroname']
+    del lowered_resp['heroname']
+    lowered_resp['real_name']= lowered_resp['realname']
+    del lowered_resp['realname']
+
+    return lowered_resp
 
 @app.route('/characters_new')
 def characters1():
 
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Characters")
+    return NEWpagedRequestRespond(resultproxy,1,characterFormat)    
 
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
-
-
-@app.route('/issues_new')
-def issues2():
-
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues")
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
 
 @app.route('/authors_new')
 def authors3():
 
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Authors")
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
-
-
-
-
+    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=authorFormat)
 
 
 @app.route('/issues')
 def issues():
     return pagedRequestRespond('Issues/',1)
 
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues")
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
-    return issuesPaged(1)
-    #return requestRespond('Issues/')
-
 
 @app.route('/authors')
 def authors():
     return pagedRequestRespond('Creators/',1)
 
+
+def authorFormat(SQLresponse):
+    SQLresponse['image'] = SQLresponse['ImageURL']
+    del(SQLresponse['ImageURL'])
+    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
+    return lowered_resp
+
+
+def issueFormat(SQLresponse):
+    SQLresponse['name'] = SQLresponse['Title'].replace('\"','"')
+    del(SQLresponse['Title'])
+    SQLresponse['cover_date'] = SQLresponse['ReleaseDate']
+    del SQLresponse['ReleaseDate']
+    SQLresponse['character_credits'] = SQLresponse['Characters'].replace('\"','"')
+    SQLresponse['character_credits'] = (json.loads(SQLresponse['character_credits']))['character_credits']
+    del SQLresponse['Characters']
+    SQLresponse['person_credits'] = SQLresponse['Authors'].replace('\"','"')
+    SQLresponse['person_credits'] = (json.loads(SQLresponse['person_credits']))['person_credits']
+    del SQLresponse['Authors']
+    SQLresponse['image'] = SQLresponse['ImageURL']
+    del(SQLresponse['ImageURL'])
+    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
+    return lowered_resp
+
+
+@app.route('/issues_new')
+def issues2():
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors")
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
-
-    return authorsPaged(1)
+    resultproxy = conn.execute("SELECT * FROM Issues")
+    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat)
 
 
+@app.route('/issue1/<string:issueName>')
+def issue3(issueName):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
+    return NEWindividualRequestRespond(resultproxy,issueName,issueFormat)
 
 
-
-
-
-
-
+@app.route('/author1/<string:authorName>')
+def authornew(authorName):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+    return NEWindividualRequestRespond(resultproxy,authorName,authorFormat)
 
 
 @app.route('/characters/<int:pageNum>')
@@ -214,49 +185,44 @@ def issuesPaged(pageNum):
     return pagedRequestRespond(directory= 'Issues/',pageNum=pageNum)
 
 
+@app.route('/authors_new/<int:pageNum>')
+def authorsPagedNEW(pageNum):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+    return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat)
+
+
+@app.route('/characters_new/<int:pageNum>')
+def charsPagedNEW(pageNum):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Characters")
+    return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat)    
+
+
+@app.route('/issues_new/<int:pageNum>')
+def issuesPagedNew(pageNum):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues")
+    return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat)
+
+
 @app.route('/character/<string:charName>')
 def character(charName):
     return individualRequestRespond('Characters/',charName)
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
 
 
 @app.route('/issue/<string:issueName>')
 def issue(issueName):
     return individualRequestRespond('Issues/',issueName)
 
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    
-    return json.dumps(a)
-
-
 
 @app.route('/author/<string:authorName>')
 def author(authorName):
     return individualRequestRespond('Creators/',authorName)
 
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
 
+def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
+    
     d, a = {}, []
     for rowproxy in resultproxy:
         # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
@@ -264,28 +230,28 @@ def author(authorName):
             # build up the dictionary
             d = {**d, **{column: value}}
         a.append(d)
+
+    info= NEWpageBounds(pageNum,len(a))
+
+
+    resp = {'response' : 'Success',
+    'page_num' : pageNum,
+    'results': ''
+    }
+    if info == None:
+        resp['response'] = 'Invalid Page Request'
+        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
     
-    return json.dumps(a)
-
-
-@app.route('/test')
-def test():
-    with db.connect() as conn:
-        resultproxy = conn.execute('show tables;')
-        d, a = {}, []
-        for rowproxy in resultproxy:
-            # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-            for column, value in rowproxy.items():
-                # build up the dictionary
-                d = {**d, **{column: value}}
-            a.append(d)
-        
-        return json.dumps(a)
-
-
-
-
-
+    bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
+    final_list = []
+    for author in a[bottomIndex:topIndex]:
+        final_list.append(formatter(author))
+    resp['results'] = final_list
+    resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
 
 
 def pagedRequestRespond(directory, pageNum):
@@ -313,7 +279,6 @@ def pagedRequestRespond(directory, pageNum):
     return resp
 
 
-
 def individualRequestRespond(directory, desiredResource):
     resp = {'response' : 'Resource {} Not Found'.format(desiredResource),
             'results': 'Please Verify desired resource is present in our database and spelled correctly'}
@@ -335,7 +300,16 @@ def individualRequestRespond(directory, desiredResource):
     return resp
 
 
-
+def NEWpageBounds(pageNum, numFiles):
+    pageNum -= 1
+    numPages = int(numFiles/5) +1
+    filesPerPage = int(numFiles/numPages)
+    if pageNum <0 or pageNum >numPages:
+        return None
+        
+    bottomIndex = pageNum * filesPerPage
+    topIndex = (pageNum+1) * filesPerPage
+    return(bottomIndex,topIndex,numPages+1)
 
 
 def pageBounds(pageNum, directory):
@@ -349,10 +323,33 @@ def pageBounds(pageNum, directory):
         
     bottomIndex = pageNum * filesPerPage
     topIndex = (pageNum+1) * filesPerPage
-    return(filesInDir, bottomIndex,topIndex,numPages+1)
-    
+    return( filesInDir, bottomIndex,topIndex,numPages+1)
     
 
+def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
+    resp = {'response' : 'Resource {} Not Found'.format(resourceName),
+        'results': 'Please Verify desired resource is present in our database and spelled correctly'}
+
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+
+    if a == []:
+        resp = make_response(json.dumps(resp, indent=4, sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    else:    
+        resp['results'] =formatter(a[0])
+        resp['response'] = 'Success'
+        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+
+    
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
