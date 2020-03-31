@@ -71,44 +71,14 @@ def init():
 
 @app.route('/characters')
 def characters():
-    return pagedRequestRespond('Characters/',1)        
-
-@app.route('/character1/<string:charName>')
-def characterFind(charName):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
-    return NEWindividualRequestRespond(resultproxy,charName,characterFormat)
-
-
-def characterFormat(SQLresponse):
-    SQLresponse['first_appeared_in_issue'] = SQLresponse['FirstAppearance'].replace('\"','"')
-    del(SQLresponse['FirstAppearance'])
-    SQLresponse['creators'] = SQLresponse['Creators'].replace('\"','"')
-    SQLresponse['creators'] = (json.loads(SQLresponse['creators']))['creators']
-    del SQLresponse['Creators']
-    SQLresponse['appearance'] = SQLresponse['Appearance'].replace('\"','"')
-    SQLresponse['appearance'] = (json.loads(SQLresponse['appearance']))['appearance']
-    del SQLresponse['Appearance']
-    SQLresponse['image'] = SQLresponse['ImageURL']
-    del(SQLresponse['ImageURL'])
-    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
-    lowered_resp['name']= lowered_resp['heroname']
-    del lowered_resp['heroname']
-    lowered_resp['real_name']= lowered_resp['realname']
-    del lowered_resp['realname']
-
-    return lowered_resp
-
-@app.route('/characters_new')
-def characters1():
 
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Characters")
     return NEWpagedRequestRespond(resultproxy,1,characterFormat)    
 
 
-@app.route('/authors_new')
-def authors3():
+@app.route('/authors')
+def authors():
 
     conn = db.connect()
     resultproxy = conn.execute("SELECT * FROM Authors")
@@ -117,12 +87,51 @@ def authors3():
 
 @app.route('/issues')
 def issues():
-    return pagedRequestRespond('Issues/',1)
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues")
+    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat)
 
 
-@app.route('/authors')
-def authors():
-    return pagedRequestRespond('Creators/',1)
+@app.route('/issue/<string:issueName>')
+def issue(issueName):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
+    return NEWindividualRequestRespond(resultproxy,issueName,issueFormat)
+
+
+@app.route('/author/<string:authorName>')
+def author(authorName):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+    return NEWindividualRequestRespond(resultproxy,authorName,authorFormat)
+
+
+@app.route('/character/<string:charName>')
+def character(charName):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
+    return NEWindividualRequestRespond(resultproxy,charName,characterFormat)
+
+
+@app.route('/authors/<int:pageNum>')
+def authorsPagedNEW(pageNum):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+    return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat)
+
+
+@app.route('/characters/<int:pageNum>')
+def charsPagedNEW(pageNum):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Characters")
+    return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat)    
+
+
+@app.route('/issues/<int:pageNum>')
+def issuesPagedNew(pageNum):
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT * FROM Issues")
+    return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat)
 
 
 def authorFormat(SQLresponse):
@@ -149,76 +158,24 @@ def issueFormat(SQLresponse):
     return lowered_resp
 
 
-@app.route('/issues_new')
-def issues2():
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues")
-    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat)
+def characterFormat(SQLresponse):
+    SQLresponse['first_appeared_in_issue'] = SQLresponse['FirstAppearance'].replace('\"','"')
+    del(SQLresponse['FirstAppearance'])
+    SQLresponse['creators'] = SQLresponse['Creators'].replace('\"','"')
+    SQLresponse['creators'] = (json.loads(SQLresponse['creators']))['creators']
+    del SQLresponse['Creators']
+    SQLresponse['appearance'] = SQLresponse['Appearance'].replace('\"','"')
+    SQLresponse['appearance'] = (json.loads(SQLresponse['appearance']))['appearance']
+    del SQLresponse['Appearance']
+    SQLresponse['image'] = SQLresponse['ImageURL']
+    del(SQLresponse['ImageURL'])
+    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
+    lowered_resp['name']= lowered_resp['heroname']
+    del lowered_resp['heroname']
+    lowered_resp['real_name']= lowered_resp['realname']
+    del lowered_resp['realname']
 
-
-@app.route('/issue1/<string:issueName>')
-def issue3(issueName):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
-    return NEWindividualRequestRespond(resultproxy,issueName,issueFormat)
-
-
-@app.route('/author1/<string:authorName>')
-def authornew(authorName):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
-    return NEWindividualRequestRespond(resultproxy,authorName,authorFormat)
-
-
-@app.route('/characters/<int:pageNum>')
-def charsPaged(pageNum):
-    return pagedRequestRespond(directory= 'Characters/',pageNum=pageNum)
-
-
-@app.route('/authors/<int:pageNum>')
-def authorsPaged(pageNum):
-    return pagedRequestRespond(directory= 'Creators/',pageNum=pageNum)
-
-
-@app.route('/issues/<int:pageNum>')
-def issuesPaged(pageNum):
-    return pagedRequestRespond(directory= 'Issues/',pageNum=pageNum)
-
-
-@app.route('/authors_new/<int:pageNum>')
-def authorsPagedNEW(pageNum):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
-    return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat)
-
-
-@app.route('/characters_new/<int:pageNum>')
-def charsPagedNEW(pageNum):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters")
-    return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat)    
-
-
-@app.route('/issues_new/<int:pageNum>')
-def issuesPagedNew(pageNum):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues")
-    return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat)
-
-
-@app.route('/character/<string:charName>')
-def character(charName):
-    return individualRequestRespond('Characters/',charName)
-
-
-@app.route('/issue/<string:issueName>')
-def issue(issueName):
-    return individualRequestRespond('Issues/',issueName)
-
-
-@app.route('/author/<string:authorName>')
-def author(authorName):
-    return individualRequestRespond('Creators/',authorName)
+    return lowered_resp
 
 
 def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
@@ -254,52 +211,6 @@ def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
     return resp
 
 
-def pagedRequestRespond(directory, pageNum):
-    info = pageBounds(pageNum,directory)
-    resp = {'response' : 'Success',
-            'page_num' : pageNum,
-            'results': ''}
-    if info == None:
-        resp['response'] = 'Invalid Page Request'
-        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-
-        return resp
-    
-    filesInDir, bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2], info[3]
-    
-    array = []
-    for jsonFile  in  filesInDir[bottomIndex:topIndex]:
-        importantFile = open(directory + jsonFile)
-        array.append( (json.load(importantFile))  )
-    
-    resp['results'] = array
-    resp = make_response(json.dumps(resp, indent=4, sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    return resp
-
-
-def individualRequestRespond(directory, desiredResource):
-    resp = {'response' : 'Resource {} Not Found'.format(desiredResource),
-            'results': 'Please Verify desired resource is present in our database and spelled correctly'}
-
-    
-    for jsonFile  in  os.listdir(directory):
-        name = jsonFile.split('.')[0]
-        if desiredResource == name:
-            resourceFile = open(directory + jsonFile)
-            resp['results'] = json.load(resourceFile)
-            resp['response'] = 'Success'
-            resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-            resp.headers['Access-Control-Allow-Origin'] = '*'
-            return resp
-
-        
-    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    return resp
-
-
 def NEWpageBounds(pageNum, numFiles):
     pageNum -= 1
     numPages = int(numFiles/5) +1
@@ -311,20 +222,6 @@ def NEWpageBounds(pageNum, numFiles):
     topIndex = (pageNum+1) * filesPerPage
     return(bottomIndex,topIndex,numPages+1)
 
-
-def pageBounds(pageNum, directory):
-    pageNum -= 1
-    filesInDir = sorted(os.listdir(directory))
-    numFiles = len(filesInDir)
-    numPages = int(numFiles/5) +1
-    filesPerPage = int(numFiles/numPages)
-    if pageNum <0 or pageNum >numPages:
-        return None
-        
-    bottomIndex = pageNum * filesPerPage
-    topIndex = (pageNum+1) * filesPerPage
-    return( filesInDir, bottomIndex,topIndex,numPages+1)
-    
 
 def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
     resp = {'response' : 'Resource {} Not Found'.format(resourceName),
