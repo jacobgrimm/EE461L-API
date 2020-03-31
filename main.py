@@ -116,7 +116,7 @@ def character(charName):
 @app.route('/authors/<int:pageNum>')
 def authorsPagedNEW(pageNum):
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+    resultproxy = conn.execute("SELECT * FROM Authors")
     return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat)
 
 
