@@ -68,6 +68,70 @@ def init():
     start()
     return "sucess!"
 '''
+@app.route('/listIssues')
+def listIssues():
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT Title FROM Issues;")
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    issueList = [i['Title'] for i in a]
+    resp = {'Response': 'Success', 'Result': issueList}
+    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+
+
+
+@app.route('/listAuthors')
+def listAuthors():
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT Name FROM Authors;")
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    nameList = [i['Name'] for i in a]
+    resp = {'Response': 'Success', 'Result': nameList}
+    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+
+
+
+
+@app.route('/listChars')
+def listChars():
+    conn = db.connect()
+    resultproxy = conn.execute("SELECT HeroName FROM Characters;")
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    charList = [i['HeroName'] for i in a]
+    resp = {'Response': 'Success', 'Result': charList}
+    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+
+
+
+
 
 @app.route('/characters')
 def characters():
@@ -138,6 +202,10 @@ def authorFormat(SQLresponse):
     SQLresponse['image'] = SQLresponse['ImageURL']
     del(SQLresponse['ImageURL'])
     lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
+    link_info = linkAuthor(lowered_resp['name'])
+    lowered_resp['issues'] = link_info[0]
+    lowered_resp['characters'] = link_info[1]
+
     return lowered_resp
 
 
@@ -174,6 +242,9 @@ def characterFormat(SQLresponse):
     del lowered_resp['heroname']
     lowered_resp['real_name']= lowered_resp['realname']
     del lowered_resp['realname']
+    link_info = linkCharacter(lowered_resp['name'])
+    lowered_resp['issues'] = link_info[0]
+    lowered_resp['authors'] = link_info[1]
 
     return lowered_resp
 
