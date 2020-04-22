@@ -108,6 +108,89 @@ def listAuthors():
 
 
 
+def sqlToDict(resultproxy):
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    return a
+
+
+@app.route('/search/<string:term>/<int:pageNum>')
+def searchPage(term, pageNum):
+    resp = {'response' : 'Success',
+    'page_num' : pageNum,
+    'results': ''
+    }
+
+    conn = db.connect()
+
+    issueResultproxy = conn.execute("""SELECT Title, MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Issues WHERE MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(term,term))
+    issueResults = sqlToDict(issueResultproxy)
+    for issueDict in issueResults:
+        issueDict['type'] = 'issue'
+        issueDict['name'] = issueDict['Title'].replace('\"','"')
+        del(issueDict['Title'])
+
+        
+    charResultproxy = conn.execute("""SELECT HeroName, MATCH(HeroName, RealName, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Characters WHERE MATCH(HeroName, RealName, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(term,term))
+    charResults = sqlToDict(charResultproxy)
+    for charDict in charResults:
+        charDict['type'] = 'character'
+        charDict['name']= charDict['HeroName']
+        del charDict['HeroName']
+
+
+    authorResultproxy = conn.execute("""SELECT Name, MATCH(Name, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Authors WHERE MATCH(Name, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(term,term))
+    authorResults = sqlToDict(authorResultproxy)
+    for authorDict in authorResults:
+        authorDict['type'] = 'author'
+        authorDict['name']= charDict['Name']
+        del authorDict['HeroName']
+
+    
+    results = issueResults + charResults + authorResults
+
+    if len(results) == 0 :
+        resp['response'] = "term '{}' not found in database".format(term)
+        resp['result'] = 'null'
+        resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+
+    finalResults = sorted(results, key=lambda k: k['score'], reverse = True) 
+
+    
+    info = NEWpageBounds(pageNum,len(finalResults))
+
+
+    if info == None:
+        resp['response'] = 'Invalid Page Request'
+        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    
+    bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
+    final_list = []
+    for entry in finalResults[bottomIndex:topIndex]:
+        del(entry['score'])
+        final_list.append(entry)
+    resp['results'] = final_list
+    resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+
+    return resp
+
+
+@app.route('/search/<string:term>')
+def search(term):
+    return searchPage(term,1)
+    
+
+
 
 
 
@@ -249,7 +332,7 @@ def characterFormat(SQLresponse):
     return lowered_resp
 
 
-def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
+def NEWpagedRequestRespond(resultproxy, pageNum,formatter, sortDir = None):
     
     d, a = {}, []
     for rowproxy in resultproxy:
@@ -258,6 +341,9 @@ def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
             # build up the dictionary
             d = {**d, **{column: value}}
         a.append(d)
+    if sortDir is not None:
+        #sortdir is true for descending, false for ascensding
+        a = sorted(a, key=lambda k: k['name'], reverse = sortDir) 
 
     info= NEWpageBounds(pageNum,len(a))
 
@@ -274,8 +360,8 @@ def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
     
     bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
     final_list = []
-    for author in a[bottomIndex:topIndex]:
-        final_list.append(formatter(author))
+    for entry in a[bottomIndex:topIndex]:
+        final_list.append(formatter(entry))
     resp['results'] = final_list
     resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -284,14 +370,16 @@ def NEWpagedRequestRespond(resultproxy, pageNum,formatter):
 
 def NEWpageBounds(pageNum, numFiles):
     pageNum -= 1
-    numPages = int(numFiles/5) +1
-    filesPerPage = int(numFiles/numPages)
+    filesPerPage = 9
+    numPages =  int(numFiles / filesPerPage) 
+    if (numFiles % filesPerPage) != 0:
+         numPages+=1
     if pageNum <0 or pageNum >numPages:
         return None
         
     bottomIndex = pageNum * filesPerPage
     topIndex = (pageNum+1) * filesPerPage
-    return(bottomIndex,topIndex,numPages+1)
+    return(bottomIndex,topIndex,numPages)
 
 
 def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
@@ -344,6 +432,16 @@ def linkAuthor(Name):
     characters = list(dict.fromkeys(characters))
     result = (titles, characters)
     return result
+
+@app.route('/issue/Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us')
+def specialTempCase():
+    issueName = 'Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us'
+    return issue(issueName)
+
+@app.route('/issue/Tales of Suspense ')
+def specialCase():
+    issueName = 'Tales of Suspense #41 The Stronghold Of Dr. Strange!'
+    return issue(issueName)
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
