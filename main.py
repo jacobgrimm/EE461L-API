@@ -18,9 +18,11 @@ import json
 import os
 import sqlalchemy
 
-from flask import Flask, render_template, redirect, url_for, make_response
+from flask import Flask, render_template, redirect, url_for, make_response, request
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 
 cloud_sql_connection_name = 'icdb-sql:us-central1:mysql-test'
@@ -148,8 +150,8 @@ def searchPage(term, pageNum):
     authorResults = sqlToDict(authorResultproxy)
     for authorDict in authorResults:
         authorDict['type'] = 'author'
-        authorDict['name']= charDict['Name']
-        del authorDict['HeroName']
+        authorDict['name']= authorDict['Name']
+        del authorDict['Name']
 
     
     results = issueResults + charResults + authorResults
@@ -218,25 +220,64 @@ def listChars():
 
 @app.route('/characters')
 def characters():
-
+    headers = request.headers        
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters")
-    return NEWpagedRequestRespond(resultproxy,1,characterFormat)    
+    if 'sort' in headers:
+        #sortdir is true for descending, false for ascensding
+        answer = 'ASC'
+        if headers['sort'] == 'False':
+            answer = 'DESC'
+        resultproxy = conn.execute("SELECT * FROM Characters ORDER BY HeroName {}".format(answer))
+    else:
+        resultproxy = conn.execute("SELECT * FROM Characters")
+
+    if 'filter' in headers:
+        return NEWpagedRequestRespond(resultproxy,1,characterFormat,headers, filterType=charFilter)
+
+    return NEWpagedRequestRespond(resultproxy,1,characterFormat,headers)    
 
 
 @app.route('/authors')
 def authors():
-
+    headers = request.headers        
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors")
-    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=authorFormat)
+    if 'sort' in headers:
+        answer = 'ASC'
+        if headers['sort'] == 'False':
+            answer = 'DESC'
+        resultproxy = conn.execute("SELECT * FROM Authors ORDER BY Name {}".format(answer))
+    else:
+        resultproxy = conn.execute("SELECT * FROM Authors")
+        
+    if 'filter' in headers:
+        return NEWpagedRequestRespond(resultproxy,1,authorFormat,headers, filterType=authorFilter)
+
+    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=authorFormat,headers= headers)
 
 
 @app.route('/issues')
 def issues():
+    headers = request.headers        
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues")
-    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat)
+
+    if 'filter' in headers:
+        return issueFilter(headers,conn,1)
+
+
+
+    if 'sort' in headers:
+        answer = 'ASC'
+        if headers['sort'] == 'False':
+            answer = 'DESC'
+        resultproxy = conn.execute("SELECT * FROM Issues ORDER BY Title {}".format(answer))
+    else:
+        resultproxy = conn.execute("SELECT * FROM Issues")
+        
+        
+
+ 
+
+    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat, headers= headers)
 
 
 @app.route('/issue/<string:issueName>')
@@ -262,23 +303,61 @@ def character(charName):
 
 @app.route('/authors/<int:pageNum>')
 def authorsPagedNEW(pageNum):
+    headers = request.headers        
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors")
-    return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat)
+    if 'sort' in headers:
+        answer = 'ASC'
+        if headers['sort'] == 'False':
+            answer = 'DESC'
+        resultproxy = conn.execute("SELECT * FROM Authors ORDER BY Name {}".format(answer))
+    else:
+        resultproxy = conn.execute("SELECT * FROM Authors")
+
+    if 'filter' in headers:
+        return NEWpagedRequestRespond(resultproxy,pageNum,authorFormat,headers, filterType=authorFilter)
+
+
+    return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat,headers=headers)
 
 
 @app.route('/characters/<int:pageNum>')
 def charsPagedNEW(pageNum):
+    headers = request.headers        
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters")
-    return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat)    
+    if 'sort' in headers:
+        #sortdir is true for descending, false for ascensding
+        answer = 'ASC'
+        if headers['sort'] == 'False':
+            answer = 'DESC'
+        resultproxy = conn.execute("SELECT * FROM Characters ORDER BY HeroName {}".format(answer))
+    else:
+        resultproxy = conn.execute("SELECT * FROM Characters")
+
+
+    if 'filter' in headers:
+        return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat,headers, filterType=charFilter)
+
+    return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat, headers= headers)    
 
 
 @app.route('/issues/<int:pageNum>')
 def issuesPagedNew(pageNum):
+    headers = request.headers        
     conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues")
-    return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat)
+
+    if 'filter' in headers:
+        return issueFilter(headers,conn,pageNum)
+
+
+    if 'sort' in headers:
+        answer = 'ASC'
+        if headers['sort'] == 'False':
+            answer = 'DESC'
+        resultproxy = conn.execute("SELECT * FROM Issues ORDER BY Title {}".format(answer))
+    else:
+        resultproxy = conn.execute("SELECT * FROM Issues")
+
+    return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat, headers= headers)
 
 
 def authorFormat(SQLresponse):
@@ -332,8 +411,7 @@ def characterFormat(SQLresponse):
     return lowered_resp
 
 
-def NEWpagedRequestRespond(resultproxy, pageNum,formatter, sortDir = None):
-    
+def filter_response(resultproxy, formatter):
     d, a = {}, []
     for rowproxy in resultproxy:
         # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
@@ -341,9 +419,129 @@ def NEWpagedRequestRespond(resultproxy, pageNum,formatter, sortDir = None):
             # build up the dictionary
             d = {**d, **{column: value}}
         a.append(d)
-    if sortDir is not None:
-        #sortdir is true for descending, false for ascensding
-        a = sorted(a, key=lambda k: k['name'], reverse = sortDir) 
+    b = []
+    for i in a:
+        b.append(formatter(i))
+    a = b
+    return a
+
+def charFilter(a, term):
+    b = []
+    term = term.lower()
+    for entry in a:
+        beenAdded = False
+        if term in entry['name'].lower():
+            b.append(entry)
+            beenAdded = True
+            continue
+        if not beenAdded:
+            for author in entry['authors']:
+                if term in author.lower():
+                    b.append(entry)
+                    beenAdded = True
+                    continue
+        if not beenAdded:
+            for issue in entry['issues']:
+                if term in issue.lower():
+                    b.append(entry)
+                    continue
+    return b
+
+def authorFilter(a, term):
+    b = []
+    term = term.lower()
+    for entry in a :
+        beenAdded = False
+        if term in entry['name'].lower():
+            b.append(entry)
+            beenAdded = True
+        if not beenAdded:
+            for character in entry['characters']:
+                if term in character.lower():
+                    b.append(entry)
+                    beenAdded = True
+                    continue
+        if not beenAdded:
+            for issue in entry['issues']:
+                if term in issue.lower():
+                    b.append(entry)
+                    continue
+    return b
+
+
+def issueFilter(headers,conn,pageNum):
+    filter_ = headers['filter']
+    string1 = "SELECT * FROM Issues WHERE JSON_SEARCH(LOWER(Authors), 'all', LOWER('%%{}%%')) > 1;".format(filter_)
+    string2 = "SELECT * FROM Issues WHERE JSON_SEARCH(LOWER(Characters), 'all', LOWER('%%{}%%')) > 1;".format(filter_)
+    resultproxy1  = conn.execute(string1)
+    a = filter_response(resultproxy1,issueFormat)
+    resultproxy2 = conn.execute(string2)
+    b = filter_response(resultproxy2, issueFormat)
+    resultproxy3 =  conn.execute("""SELECT *, MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Issues WHERE MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(filter_,filter_))
+    c = filter_response(resultproxy3, issueFormat)
+    for entry in c:
+        del entry['score']
+    d = a + b + c
+    if 'sort' in headers:
+        reverse = True
+        if headers['sort'] == 'False':
+            reverse = False
+            d = sorted(d, key=lambda k: k['name'], reverse = reverse)
+    else:
+            d = sorted(d, key=lambda k: k['name'])
+    
+    #remove duplicates
+    temp = []
+    prev = 'TEMP_ISSUE'
+    for entry in d:
+        if prev != entry['name']:
+            temp.append(entry)
+        prev = entry['name']
+    a = temp
+
+
+    info= NEWpageBounds(pageNum,len(a))
+
+    resp = {'response' : 'Success',
+    'page_num' : pageNum,
+    'results': ''
+    }
+    if info == None:
+        resp['response'] = 'Invalid Page Request'
+        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+    
+    bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
+    final_list = []
+    for entry in a[bottomIndex:topIndex]:
+        final_list.append((entry))
+    resp['results'] = final_list
+    resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Headers'] = 'filter'
+    resp.headers['Access-Control-Request-Method'] = 'GET'
+    return resp
+
+        
+
+
+
+def NEWpagedRequestRespond(resultproxy, pageNum,formatter, headers,filterType = None):
+    d, a = {}, []
+    for rowproxy in resultproxy:
+        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+        for column, value in rowproxy.items():
+            # build up the dictionary
+            d = {**d, **{column: value}}
+        a.append(d)
+    b = []
+    for i in a:
+        b.append(formatter(i))
+    a = b
+
+    if 'filter' in headers:
+        a = filterType(a, headers['filter'])
 
     info= NEWpageBounds(pageNum,len(a))
 
@@ -361,10 +559,14 @@ def NEWpagedRequestRespond(resultproxy, pageNum,formatter, sortDir = None):
     bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
     final_list = []
     for entry in a[bottomIndex:topIndex]:
-        final_list.append(formatter(entry))
+        final_list.append((entry))
     resp['results'] = final_list
     resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
     resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Headers'] = 'filter'
+    resp.headers['Access-Control-Request-Method'] = 'GET'
+
+
     return resp
 
 
@@ -433,15 +635,6 @@ def linkAuthor(Name):
     result = (titles, characters)
     return result
 
-@app.route('/issue/Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us')
-def specialTempCase():
-    issueName = 'Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us'
-    return issue(issueName)
-
-@app.route('/issue/Tales of Suspense ')
-def specialCase():
-    issueName = 'Tales of Suspense #41 The Stronghold Of Dr. Strange!'
-    return issue(issueName)
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
