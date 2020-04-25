@@ -22,8 +22,8 @@ def start():
         query={"unix_socket": "/cloudsql/{}".format(cloud_sql_connection_name)},
     )
     )
-
-    directories = ['Issues/']
+    
+    directories = ['Issues/','new_issues/Issues/']
 
     for directory in directories:
         with db.connect() as conn:
@@ -36,7 +36,7 @@ def start():
                 conn.execute(query)
 
     
-    directories = ['Characters/']
+    directories = ['Characters/','new_issues/Characters/']
 
     for directory in directories:
         with db.connect() as conn:
@@ -55,7 +55,7 @@ def start():
 
                 #INSERT INTO Characters(HeroName, RealName, Aliases, Alignment, Appearance, Creators, Deck, Description, FirstAppearance, ImageURL) values();
 
-    directories = ['Creators/']
+    directories = ['Creators/', 'new_issues/Creators/']
 
     for directory in directories:
         with db.connect() as conn:

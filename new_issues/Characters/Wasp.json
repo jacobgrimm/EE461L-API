@@ -1,0 +1,26 @@
+{
+    "aliases": null,
+    "alignment": "good",
+    "api_detail_url": "https://comicvine.gamespot.com/api/character/4005-153959/",
+    "appearance": {
+        "eye-color": "Blue",
+        "gender": "Female",
+        "hair-color": "Auburn",
+        "height": [
+            "5''4",
+            "163 cm"
+        ],
+        "race": "Human",
+        "weight": [
+            "110 lb",
+            "50 kg"
+        ]
+    },
+    "creators": [],
+    "deck": null,
+    "description": "null",
+    "first_appeared_in_issue": null,
+    "image": "https://www.superherodb.com/pictures2/portraits/10/100/155.jpg",
+    "name": "Wasp",
+    "real_name": null
+}

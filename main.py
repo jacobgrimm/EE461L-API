@@ -42,6 +42,8 @@ sqlalchemy.engine.url.URL(
 )
 )
 
+
+
 @app.route('/')
 def root():
     characters = []
