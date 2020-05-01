@@ -24,89 +24,75 @@ class Authors:
             Authors.__instance = self
             Authors.__db = db
 
-    def listChars(self):
+    def listAuthors(self):
         conn = self.__db.connect()
-        resultproxy = conn.execute("SELECT HeroName FROM Authors;")
+        resultproxy = conn.execute("SELECT Name FROM Authors;")
         a = sqlToDict(resultproxy)
-        charList = [i['HeroName'] for i in a]
-        resp = {'Response': 'Success', 'Result': charList}
+        nameList = [i['Name'] for i in a]
+        resp = {'Response': 'Success', 'Result': nameList}
         resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
 
-    def charsPagedNEW(self, pageNum, headers):
+    def authorsPagedNEW(self, pageNum, headers):
         conn = self.__db.connect()
         if 'sort' in headers:
-            #sortdir is true for descending, false for ascensding
             answer = 'ASC'
             if headers['sort'] == 'False':
                 answer = 'DESC'
-            resultproxy = conn.execute("SELECT * FROM Authors ORDER BY HeroName {}".format(answer))
+            resultproxy = conn.execute("SELECT * FROM Authors ORDER BY Name {}".format(answer))
         else:
             resultproxy = conn.execute("SELECT * FROM Authors")
 
-
         if 'filter' in headers:
-            return responseFactory.NEWpagedRequestRespond(resultproxy,pageNum,self.__characterFormat,headers, filterType=self.__charFilter)
+            return responseFactory.NEWpagedRequestRespond(resultproxy,pageNum,self.__authorFormat,headers, filterType=self.__authorFilter)
 
-        return responseFactory.NEWpagedRequestRespond(resultproxy,pageNum,self.__characterFormat, headers= headers)    
+
+        return responseFactory.NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=self.__authorFormat,headers=headers)
 
     
-    def character(self, charName):
+    def author(self, authorName):
         conn = self.__db.connect()
-        resultproxy = conn.execute("SELECT * FROM Authors WHERE HeroName = '{}'".format(charName))
-        return responseFactory.NEWindividualRequestRespond(resultproxy,charName,self.__characterFormat)
+        resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
+        return responseFactory.NEWindividualRequestRespond(resultproxy,authorName,self.__authorFormat)
 
 
 
-    def __characterFormat(self,SQLresponse):
-        SQLresponse['first_appeared_in_issue'] = SQLresponse['FirstAppearance'].replace('\"','"')
-        del(SQLresponse['FirstAppearance'])
-        SQLresponse['creators'] = SQLresponse['Creators'].replace('\"','"')
-        SQLresponse['creators'] = (json.loads(SQLresponse['creators']))['creators']
-        del SQLresponse['Creators']
-        SQLresponse['appearance'] = SQLresponse['Appearance'].replace('\"','"')
-        SQLresponse['appearance'] = (json.loads(SQLresponse['appearance']))['appearance']
-        del SQLresponse['Appearance']
+    def __authorFormat(self,SQLresponse):
         SQLresponse['image'] = SQLresponse['ImageURL']
         del(SQLresponse['ImageURL'])
         lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
-        lowered_resp['name']= lowered_resp['heroname']
-        del lowered_resp['heroname']
-        lowered_resp['real_name']= lowered_resp['realname']
-        del lowered_resp['realname']
-        link_info = self.__linkCharacter(lowered_resp['name'])
+        link_info = self.__linkAuthor(lowered_resp['name'])
         lowered_resp['issues'] = link_info[0]
-        lowered_resp['authors'] = link_info[1]
+        lowered_resp['characters'] = link_info[1]
 
         return lowered_resp
 
-    def __linkCharacter(self,HeroName):
+    def __linkAuthor(self, Name):
         conn = self.__db.connect()
-        resultproxy2 = conn.execute("SELECT Title, Authors FROM Issues WHERE JSON_SEARCH(Authors, 'all', '{}') > 1;".format(HeroName))
+        resultproxy2 = conn.execute("SELECT Title, Characters FROM Issues WHERE JSON_SEARCH(Authors, 'all', '{}%%') > 1;".format(Name))
 
         titles =[]
-        authors =[]
+        characters =[]
         for row in resultproxy2:
             titles.append(row[0])
-            author = json.loads(row[1])
-            authors.extend(author['person_credits'])
-        authors = list(dict.fromkeys(authors))
-        result = (titles, authors)
+            character = json.loads(row[1])
+            characters.extend(character['character_credits'])
+        characters = list(dict.fromkeys(characters))
+        result = (titles, characters)
         return result
 
-    def __charFilter(self, a, term):
+    def __authorFilter(self, a, term):
         b = []
         term = term.lower()
-        for entry in a:
+        for entry in a :
             beenAdded = False
             if term in entry['name'].lower():
                 b.append(entry)
                 beenAdded = True
-                continue
             if not beenAdded:
-                for author in entry['authors']:
-                    if term in author.lower():
+                for character in entry['characters']:
+                    if term in character.lower():
                         b.append(entry)
                         beenAdded = True
                         continue
@@ -116,5 +102,4 @@ class Authors:
                         b.append(entry)
                         continue
         return b
-
 

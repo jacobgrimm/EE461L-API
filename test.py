@@ -207,7 +207,7 @@ def main():
     test_all_characters()
     test_all_authors()
     test_all_issues()
-
+    
     test_access_success()
     
     test_char_access()

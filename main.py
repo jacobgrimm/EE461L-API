@@ -22,6 +22,7 @@ from flask import Flask, render_template, redirect, url_for, make_response, requ
 from flask_cors import CORS
 
 from Characters import Characters
+from Authors import Authors
 
 app = Flask(__name__)
 CORS(app)
@@ -44,6 +45,7 @@ sqlalchemy.engine.url.URL(
 )
 )
 Characters(db)
+Authors(db)
 
 
 
@@ -98,20 +100,8 @@ def listIssues():
 
 @app.route('/listAuthors')
 def listAuthors():
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT Name FROM Authors;")
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    nameList = [i['Name'] for i in a]
-    resp = {'Response': 'Success', 'Result': nameList}
-    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    return resp
+    authorObj = Authors.getInstance()
+    return authorObj.listAuthors()
 
 
 
@@ -206,8 +196,6 @@ def listChars():
 
 
 
-
-
 @app.route('/characters')
 def characters():
     headers = request.headers        
@@ -217,20 +205,9 @@ def characters():
 
 @app.route('/authors')
 def authors():
-    headers = request.headers        
-    conn = db.connect()
-    if 'sort' in headers:
-        answer = 'ASC'
-        if headers['sort'] == 'False':
-            answer = 'DESC'
-        resultproxy = conn.execute("SELECT * FROM Authors ORDER BY Name {}".format(answer))
-    else:
-        resultproxy = conn.execute("SELECT * FROM Authors")
-        
-    if 'filter' in headers:
-        return NEWpagedRequestRespond(resultproxy,1,authorFormat,headers, filterType=authorFilter)
-
-    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=authorFormat,headers= headers)
+    headers = request.headers
+    authorObj = Authors.getInstance()
+    return authorObj.authorsPagedNEW(1,headers)  
 
 
 @app.route('/issues')
@@ -241,8 +218,6 @@ def issues():
     if 'filter' in headers:
         return issueFilter(headers,conn,1)
 
-
-
     if 'sort' in headers:
         answer = 'ASC'
         if headers['sort'] == 'False':
@@ -251,10 +226,6 @@ def issues():
     else:
         resultproxy = conn.execute("SELECT * FROM Issues")
         
-        
-
- 
-
     return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat, headers= headers)
 
 
@@ -267,9 +238,8 @@ def issue(issueName):
 
 @app.route('/author/<string:authorName>')
 def author(authorName):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Authors WHERE Name = '{}'".format(authorName))
-    return NEWindividualRequestRespond(resultproxy,authorName,authorFormat)
+    authorObj = Authors.getInstance()
+    return authorObj.author(authorName)
 
 
 @app.route('/character/<string:charName>')
@@ -280,21 +250,10 @@ def character(charName):
 
 @app.route('/authors/<int:pageNum>')
 def authorsPagedNEW(pageNum):
-    headers = request.headers        
-    conn = db.connect()
-    if 'sort' in headers:
-        answer = 'ASC'
-        if headers['sort'] == 'False':
-            answer = 'DESC'
-        resultproxy = conn.execute("SELECT * FROM Authors ORDER BY Name {}".format(answer))
-    else:
-        resultproxy = conn.execute("SELECT * FROM Authors")
+    headers = request.headers 
+    authorObj = Authors.getInstance()
+    return authorObj.authorsPagedNEW(pageNum,headers)  
 
-    if 'filter' in headers:
-        return NEWpagedRequestRespond(resultproxy,pageNum,authorFormat,headers, filterType=authorFilter)
-
-
-    return NEWpagedRequestRespond(resultproxy,pageNum=pageNum, formatter=authorFormat,headers=headers)
 
 
 @app.route('/characters/<int:pageNum>')
@@ -324,15 +283,7 @@ def issuesPagedNew(pageNum):
     return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat, headers= headers)
 
 
-def authorFormat(SQLresponse):
-    SQLresponse['image'] = SQLresponse['ImageURL']
-    del(SQLresponse['ImageURL'])
-    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
-    link_info = linkAuthor(lowered_resp['name'])
-    lowered_resp['issues'] = link_info[0]
-    lowered_resp['characters'] = link_info[1]
 
-    return lowered_resp
 
 
 def issueFormat(SQLresponse):
@@ -369,26 +320,7 @@ def filter_response(resultproxy, formatter):
     return a
 
 
-def authorFilter(a, term):
-    b = []
-    term = term.lower()
-    for entry in a :
-        beenAdded = False
-        if term in entry['name'].lower():
-            b.append(entry)
-            beenAdded = True
-        if not beenAdded:
-            for character in entry['characters']:
-                if term in character.lower():
-                    b.append(entry)
-                    beenAdded = True
-                    continue
-        if not beenAdded:
-            for issue in entry['issues']:
-                if term in issue.lower():
-                    b.append(entry)
-                    continue
-    return b
+
 
 
 def issueFilter(headers,conn,pageNum):
@@ -530,19 +462,6 @@ def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
         return resp
 
 
-def linkAuthor(Name):
-    conn = db.connect()
-    resultproxy2 = conn.execute("SELECT Title, Characters FROM Issues WHERE JSON_SEARCH(Authors, 'all', '{}%%') > 1;".format(Name))
-
-    titles =[]
-    characters =[]
-    for row in resultproxy2:
-        titles.append(row[0])
-        character = json.loads(row[1])
-        characters.extend(character['character_credits'])
-    characters = list(dict.fromkeys(characters))
-    result = (titles, characters)
-    return result
 
 @app.route('/issue/Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us')
 def specialTempCase():
