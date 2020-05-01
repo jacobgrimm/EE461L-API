@@ -1,9 +1,6 @@
-import datetime
 import json
-import os
-import sqlalchemy
 
-from flask import Flask, make_response, request
+from flask import make_response
 
 
 def sqlToDict(resultproxy):
@@ -88,3 +85,47 @@ class responseFactory :
         bottomIndex = pageNum * filesPerPage
         topIndex = (pageNum+1) * filesPerPage
         return(bottomIndex,topIndex,numPages)
+
+    @staticmethod
+    def constructIssueFilterResponse(d, headers, pageNum):
+        if 'sort' in headers:
+            reverse = True
+            if headers['sort'] == 'False':
+                reverse = False
+                d = sorted(d, key=lambda k: k['name'], reverse = reverse)
+        else:
+                d = sorted(d, key=lambda k: k['name'])
+        
+        #remove duplicates
+        temp = []
+        prev = 'TEMP_ISSUE'
+        for entry in d:
+            if prev != entry['name']:
+                temp.append(entry)
+            prev = entry['name']
+        a = temp
+
+
+        info= responseFactory.NEWpageBounds(pageNum,len(a))
+
+        resp = {'response' : 'Success',
+        'page_num' : pageNum,
+        'results': ''
+        }
+        if info == None:
+            resp['response'] = 'Invalid Page Request'
+            resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            return resp
+        
+        bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
+        final_list = []
+        for entry in a[bottomIndex:topIndex]:
+            final_list.append((entry))
+        resp['results'] = final_list
+        resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Headers'] = 'filter'
+        resp.headers['Access-Control-Request-Method'] = 'GET'
+        return resp
+

@@ -13,88 +13,31 @@
 # limitations under the License.
 
 # [START gae_python37_render_template]
-import datetime
-import json
-import os
-import sqlalchemy
 
-from flask import Flask, render_template, redirect, url_for, make_response, request
+from flask import Flask, request
 from flask_cors import CORS
 
 from Characters import Characters
 from Authors import Authors
+from Issues import Issues
+from response_functions import responseFactory, sqlToDict
+from database import database
+from Search import searchFor
 
 app = Flask(__name__)
 CORS(app)
 
 
-cloud_sql_connection_name = 'icdb-sql:us-central1:mysql-test'
-db_user = 'root'
-db_pass = 'icdbmysql'
-db_name = 'icdb'
-db = sqlalchemy.create_engine(
-# Equivalent URL:
-# mysql+pymysql://<db_user>:<db_pass>@/<db_name>?unix_socket=/cloudsql/<cloud_sql_instance_name>
-sqlalchemy.engine.url.URL(
-    drivername="mysql+pymysql",
-    username=db_user,
-    password=db_pass,
-    database=db_name,
-
-    query={"unix_socket": "/cloudsql/{}".format(cloud_sql_connection_name)},
-)
-)
+db = database.getInstance()
 Characters(db)
 Authors(db)
+Issues(db)
 
 
-
-@app.route('/')
-def root():
-    characters = []
-    for jsonFile  in  os.listdir('Characters'):
-        characters.append(jsonFile.split('.json')[0])
-    issues = []
-    for jsonFile  in  os.listdir('Issues'):
-        issues.append(jsonFile.split('.json')[0])
-    creators = []
-    for jsonFile  in  os.listdir('Creators'):
-        creators.append(jsonFile.split('.json')[0])
-
-    
-
-
-    # For the sake of example, use static information to inflate the template.
-    # This will be replaced with real information in later steps.
-
-    return render_template(
-        'index.html', times=characters, issues = issues, authors = creators)
-
-'''
-@app.route('/init')
-def init():
-    from putInDatabase import start
-    start()
-    return "sucess!"
-'''
 @app.route('/listIssues')
 def listIssues():
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT Title FROM Issues;")
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    issueList = [i['Title'] for i in a]
-    resp = {'Response': 'Success', 'Result': issueList}
-    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    return resp
-
-
+    issueObj = Issues.getInstance()
+    return issueObj.listIssues()
 
 
 
@@ -104,97 +47,18 @@ def listAuthors():
     return authorObj.listAuthors()
 
 
-
-def sqlToDict(resultproxy):
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    return a
-
-
 @app.route('/search/<string:term>/<int:pageNum>')
 def searchPage(term, pageNum):
-    resp = {'response' : 'Success',
-    'page_num' : pageNum,
-    'results': ''
-    }
-
-    conn = db.connect()
-
-    issueResultproxy = conn.execute("""SELECT Title, MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Issues WHERE MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(term,term))
-    issueResults = sqlToDict(issueResultproxy)
-    for issueDict in issueResults:
-        issueDict['type'] = 'issue'
-        issueDict['name'] = issueDict['Title'].replace('\"','"')
-        del(issueDict['Title'])
-
-        
-    charResultproxy = conn.execute("""SELECT HeroName, MATCH(HeroName, RealName, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Characters WHERE MATCH(HeroName, RealName, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(term,term))
-    charResults = sqlToDict(charResultproxy)
-    for charDict in charResults:
-        charDict['type'] = 'character'
-        charDict['name']= charDict['HeroName']
-        del charDict['HeroName']
-
-
-    authorResultproxy = conn.execute("""SELECT Name, MATCH(Name, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Authors WHERE MATCH(Name, Aliases) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(term,term))
-    authorResults = sqlToDict(authorResultproxy)
-    for authorDict in authorResults:
-        authorDict['type'] = 'author'
-        authorDict['name']= authorDict['Name']
-        del authorDict['Name']
-
-    
-    results = issueResults + charResults + authorResults
-
-    if len(results) == 0 :
-        resp['response'] = "term '{}' not found in database".format(term)
-        resp['result'] = 'null'
-        resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-
-    finalResults = sorted(results, key=lambda k: k['score'], reverse = True) 
-
-    
-    info = NEWpageBounds(pageNum,len(finalResults))
-
-
-    if info == None:
-        resp['response'] = 'Invalid Page Request'
-        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-    
-    bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
-    final_list = []
-    for entry in finalResults[bottomIndex:topIndex]:
-        del(entry['score'])
-        final_list.append(entry)
-    resp['results'] = final_list
-    resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-
-    return resp
-
+    return searchFor(db,term,pageNum)
 
 @app.route('/search/<string:term>')
 def search(term):
-    return searchPage(term,1)
+    return searchFor(db,term,1)
     
-
-
-
 @app.route('/listChars')
 def listChars():
     characterObj = Characters.getInstance()
     return characterObj.listChars()
-
-
 
 @app.route('/characters')
 def characters():
@@ -212,28 +76,14 @@ def authors():
 
 @app.route('/issues')
 def issues():
-    headers = request.headers        
-    conn = db.connect()
-
-    if 'filter' in headers:
-        return issueFilter(headers,conn,1)
-
-    if 'sort' in headers:
-        answer = 'ASC'
-        if headers['sort'] == 'False':
-            answer = 'DESC'
-        resultproxy = conn.execute("SELECT * FROM Issues ORDER BY Title {}".format(answer))
-    else:
-        resultproxy = conn.execute("SELECT * FROM Issues")
-        
-    return NEWpagedRequestRespond(resultproxy,pageNum=1,formatter=issueFormat, headers= headers)
-
+    headers = request.headers   
+    issueObj = Issues.getInstance()
+    return issueObj.IssuesPagedNEW(1, headers)
 
 @app.route('/issue/<string:issueName>')
 def issue(issueName):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Issues WHERE Title = '{}'".format(issueName))
-    return NEWindividualRequestRespond(resultproxy,issueName,issueFormat)
+    issueObj = Issues.getInstance()
+    return issueObj.issue(issueName)
 
 
 @app.route('/author/<string:authorName>')
@@ -265,202 +115,9 @@ def charsPagedNEW(pageNum):
 
 @app.route('/issues/<int:pageNum>')
 def issuesPagedNew(pageNum):
-    headers = request.headers        
-    conn = db.connect()
-
-    if 'filter' in headers:
-        return issueFilter(headers,conn,pageNum)
-
-
-    if 'sort' in headers:
-        answer = 'ASC'
-        if headers['sort'] == 'False':
-            answer = 'DESC'
-        resultproxy = conn.execute("SELECT * FROM Issues ORDER BY Title {}".format(answer))
-    else:
-        resultproxy = conn.execute("SELECT * FROM Issues")
-
-    return NEWpagedRequestRespond(resultproxy,pageNum,issueFormat, headers= headers)
-
-
-
-
-
-def issueFormat(SQLresponse):
-    SQLresponse['name'] = SQLresponse['Title'].replace('\"','"')
-    del(SQLresponse['Title'])
-    SQLresponse['cover_date'] = SQLresponse['ReleaseDate']
-    del SQLresponse['ReleaseDate']
-    SQLresponse['character_credits'] = SQLresponse['Characters'].replace('\"','"')
-    SQLresponse['character_credits'] = (json.loads(SQLresponse['character_credits']))['character_credits']
-    del SQLresponse['Characters']
-    SQLresponse['person_credits'] = SQLresponse['Authors'].replace('\"','"')
-    SQLresponse['person_credits'] = (json.loads(SQLresponse['person_credits']))['person_credits']
-    del SQLresponse['Authors']
-    SQLresponse['image'] = SQLresponse['ImageURL']
-    del(SQLresponse['ImageURL'])
-    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
-    return lowered_resp
-
-
-
-
-def filter_response(resultproxy, formatter):
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    b = []
-    for i in a:
-        b.append(formatter(i))
-    a = b
-    return a
-
-
-
-
-
-def issueFilter(headers,conn,pageNum):
-    filter_ = headers['filter']
-    string1 = "SELECT * FROM Issues WHERE JSON_SEARCH(LOWER(Authors), 'all', LOWER('%%{}%%')) > 1;".format(filter_)
-    string2 = "SELECT * FROM Issues WHERE JSON_SEARCH(LOWER(Characters), 'all', LOWER('%%{}%%')) > 1;".format(filter_)
-    resultproxy1  = conn.execute(string1)
-    a = filter_response(resultproxy1,issueFormat)
-    resultproxy2 = conn.execute(string2)
-    b = filter_response(resultproxy2, issueFormat)
-    resultproxy3 =  conn.execute("""SELECT *, MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE) AS score FROM Issues WHERE MATCH(Title, Series) AGAINST('{}' IN NATURAL LANGUAGE MODE);""".format(filter_,filter_))
-    c = filter_response(resultproxy3, issueFormat)
-    for entry in c:
-        del entry['score']
-    d = a + b + c
-    if 'sort' in headers:
-        reverse = True
-        if headers['sort'] == 'False':
-            reverse = False
-            d = sorted(d, key=lambda k: k['name'], reverse = reverse)
-    else:
-            d = sorted(d, key=lambda k: k['name'])
-    
-    #remove duplicates
-    temp = []
-    prev = 'TEMP_ISSUE'
-    for entry in d:
-        if prev != entry['name']:
-            temp.append(entry)
-        prev = entry['name']
-    a = temp
-
-
-    info= NEWpageBounds(pageNum,len(a))
-
-    resp = {'response' : 'Success',
-    'page_num' : pageNum,
-    'results': ''
-    }
-    if info == None:
-        resp['response'] = 'Invalid Page Request'
-        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-    
-    bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
-    final_list = []
-    for entry in a[bottomIndex:topIndex]:
-        final_list.append((entry))
-    resp['results'] = final_list
-    resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Access-Control-Allow-Headers'] = 'filter'
-    resp.headers['Access-Control-Request-Method'] = 'GET'
-    return resp
-
-        
-
-
-
-def NEWpagedRequestRespond(resultproxy, pageNum,formatter, headers,filterType = None):
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    b = []
-    for i in a:
-        b.append(formatter(i))
-    a = b
-
-    if 'filter' in headers:
-        a = filterType(a, headers['filter'])
-
-    info= NEWpageBounds(pageNum,len(a))
-
-
-    resp = {'response' : 'Success',
-    'page_num' : pageNum,
-    'results': ''
-    }
-    if info == None:
-        resp['response'] = 'Invalid Page Request'
-        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-    
-    bottomIndex, topIndex, resp['pages_total'] = info[0], info[1], info[2]
-    final_list = []
-    for entry in a[bottomIndex:topIndex]:
-        final_list.append((entry))
-    resp['results'] = final_list
-    resp = make_response(json.dumps(resp, indent=4 ,sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    resp.headers['Access-Control-Allow-Headers'] = 'filter'
-    resp.headers['Access-Control-Request-Method'] = 'GET'
-
-
-    return resp
-
-
-def NEWpageBounds(pageNum, numFiles):
-    pageNum -= 1
-    filesPerPage = 9
-    numPages =  int(numFiles / filesPerPage) 
-    if (numFiles % filesPerPage) != 0:
-         numPages+=1
-    if pageNum <0 or pageNum >numPages:
-        return None
-        
-    bottomIndex = pageNum * filesPerPage
-    topIndex = (pageNum+1) * filesPerPage
-    return(bottomIndex,topIndex,numPages)
-
-
-def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
-    resp = {'response' : 'Resource {} Not Found'.format(resourceName),
-        'results': 'Please Verify desired resource is present in our database and spelled correctly'}
-
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-
-    if a == []:
-        resp = make_response(json.dumps(resp, indent=4, sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-    else:    
-        resp['results'] =formatter(a[0])
-        resp['response'] = 'Success'
-        resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-        resp.headers['Access-Control-Allow-Origin'] = '*'
-        return resp
-
+    headers = request.headers    
+    issueObj = Issues.getInstance()
+    return issueObj.IssuesPagedNEW(pageNum,headers)
 
 
 @app.route('/issue/Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us')
@@ -472,6 +129,19 @@ def specialTempCase():
 def specialCase():
     issueName = 'Tales of Suspense #41 The Stronghold Of Dr. Strange!'
     return issue(issueName)
+
+
+@app.route('/')
+def root():
+    return "Welcome to icdb API \n \n We are happy to have you!"
+    
+'''
+@app.route('/init')
+def init():
+    from putInDatabase import start
+    start()
+    return "sucess!"
+'''
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
