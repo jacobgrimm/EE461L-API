@@ -21,6 +21,8 @@ import sqlalchemy
 from flask import Flask, render_template, redirect, url_for, make_response, request
 from flask_cors import CORS
 
+from Characters import Characters
+
 app = Flask(__name__)
 CORS(app)
 
@@ -41,6 +43,7 @@ sqlalchemy.engine.url.URL(
     query={"unix_socket": "/cloudsql/{}".format(cloud_sql_connection_name)},
 )
 )
+Characters(db)
 
 
 
@@ -196,25 +199,10 @@ def search(term):
 
 
 
-
-
 @app.route('/listChars')
 def listChars():
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT HeroName FROM Characters;")
-    d, a = {}, []
-    for rowproxy in resultproxy:
-        # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
-        for column, value in rowproxy.items():
-            # build up the dictionary
-            d = {**d, **{column: value}}
-        a.append(d)
-    charList = [i['HeroName'] for i in a]
-    resp = {'Response': 'Success', 'Result': charList}
-    resp =  make_response(json.dumps(resp, indent=4, sort_keys= True))
-    resp.headers['Access-Control-Allow-Origin'] = '*'
-    return resp
-
+    characterObj = Characters.getInstance()
+    return characterObj.listChars()
 
 
 
@@ -223,20 +211,8 @@ def listChars():
 @app.route('/characters')
 def characters():
     headers = request.headers        
-    conn = db.connect()
-    if 'sort' in headers:
-        #sortdir is true for descending, false for ascensding
-        answer = 'ASC'
-        if headers['sort'] == 'False':
-            answer = 'DESC'
-        resultproxy = conn.execute("SELECT * FROM Characters ORDER BY HeroName {}".format(answer))
-    else:
-        resultproxy = conn.execute("SELECT * FROM Characters")
-
-    if 'filter' in headers:
-        return NEWpagedRequestRespond(resultproxy,1,characterFormat,headers, filterType=charFilter)
-
-    return NEWpagedRequestRespond(resultproxy,1,characterFormat,headers)    
+    characterObj = Characters.getInstance()
+    return characterObj.charsPagedNEW(pageNum = 1, headers = headers)
 
 
 @app.route('/authors')
@@ -298,9 +274,8 @@ def author(authorName):
 
 @app.route('/character/<string:charName>')
 def character(charName):
-    conn = db.connect()
-    resultproxy = conn.execute("SELECT * FROM Characters WHERE HeroName = '{}'".format(charName))
-    return NEWindividualRequestRespond(resultproxy,charName,characterFormat)
+    characterObj = Characters.getInstance()
+    return characterObj.character(charName)
 
 
 @app.route('/authors/<int:pageNum>')
@@ -325,21 +300,8 @@ def authorsPagedNEW(pageNum):
 @app.route('/characters/<int:pageNum>')
 def charsPagedNEW(pageNum):
     headers = request.headers        
-    conn = db.connect()
-    if 'sort' in headers:
-        #sortdir is true for descending, false for ascensding
-        answer = 'ASC'
-        if headers['sort'] == 'False':
-            answer = 'DESC'
-        resultproxy = conn.execute("SELECT * FROM Characters ORDER BY HeroName {}".format(answer))
-    else:
-        resultproxy = conn.execute("SELECT * FROM Characters")
-
-
-    if 'filter' in headers:
-        return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat,headers, filterType=charFilter)
-
-    return NEWpagedRequestRespond(resultproxy,pageNum,characterFormat, headers= headers)    
+    characterObj = Characters.getInstance()
+    return characterObj.charsPagedNEW(pageNum, headers)
 
 
 @app.route('/issues/<int:pageNum>')
@@ -390,27 +352,6 @@ def issueFormat(SQLresponse):
     return lowered_resp
 
 
-def characterFormat(SQLresponse):
-    SQLresponse['first_appeared_in_issue'] = SQLresponse['FirstAppearance'].replace('\"','"')
-    del(SQLresponse['FirstAppearance'])
-    SQLresponse['creators'] = SQLresponse['Creators'].replace('\"','"')
-    SQLresponse['creators'] = (json.loads(SQLresponse['creators']))['creators']
-    del SQLresponse['Creators']
-    SQLresponse['appearance'] = SQLresponse['Appearance'].replace('\"','"')
-    SQLresponse['appearance'] = (json.loads(SQLresponse['appearance']))['appearance']
-    del SQLresponse['Appearance']
-    SQLresponse['image'] = SQLresponse['ImageURL']
-    del(SQLresponse['ImageURL'])
-    lowered_resp = dict((k.lower(), v) for k,v in SQLresponse.items())
-    lowered_resp['name']= lowered_resp['heroname']
-    del lowered_resp['heroname']
-    lowered_resp['real_name']= lowered_resp['realname']
-    del lowered_resp['realname']
-    link_info = linkCharacter(lowered_resp['name'])
-    lowered_resp['issues'] = link_info[0]
-    lowered_resp['authors'] = link_info[1]
-
-    return lowered_resp
 
 
 def filter_response(resultproxy, formatter):
@@ -427,27 +368,6 @@ def filter_response(resultproxy, formatter):
     a = b
     return a
 
-def charFilter(a, term):
-    b = []
-    term = term.lower()
-    for entry in a:
-        beenAdded = False
-        if term in entry['name'].lower():
-            b.append(entry)
-            beenAdded = True
-            continue
-        if not beenAdded:
-            for author in entry['authors']:
-                if term in author.lower():
-                    b.append(entry)
-                    beenAdded = True
-                    continue
-        if not beenAdded:
-            for issue in entry['issues']:
-                if term in issue.lower():
-                    b.append(entry)
-                    continue
-    return b
 
 def authorFilter(a, term):
     b = []
@@ -609,19 +529,6 @@ def NEWindividualRequestRespond(resultproxy, resourceName, formatter):
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
 
-def linkCharacter(HeroName):
-    conn = db.connect()
-    resultproxy2 = conn.execute("SELECT Title, Authors FROM Issues WHERE JSON_SEARCH(Characters, 'all', '{}') > 1;".format(HeroName))
-
-    titles =[]
-    authors =[]
-    for row in resultproxy2:
-        titles.append(row[0])
-        author = json.loads(row[1])
-        authors.extend(author['person_credits'])
-    authors = list(dict.fromkeys(authors))
-    result = (titles, authors)
-    return result
 
 def linkAuthor(Name):
     conn = db.connect()
@@ -637,6 +544,15 @@ def linkAuthor(Name):
     result = (titles, characters)
     return result
 
+@app.route('/issue/Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us')
+def specialTempCase():
+    issueName = 'Spider-Man! / The Bell Ringer / The Man in the Mummy Case / There are Martians Among Us'
+    return issue(issueName)
+
+@app.route('/issue/Tales of Suspense ')
+def specialCase():
+    issueName = 'Tales of Suspense #41 The Stronghold Of Dr. Strange!'
+    return issue(issueName)
 
 if __name__ == '__main__':
     # This is used when running locally only. When deploying to Google App
